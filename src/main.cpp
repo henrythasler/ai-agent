@@ -18,6 +18,10 @@ float highDPIscaleFactor = 1.0;
 float backgroundR = 0.1f,
       backgroundG = 0.3f,
       backgroundB = 0.2f;
+
+float frameTime = 0.0f;
+float prevTimestamp = 0.0f;
+
 std::filesystem::path currentPath = ".";
 std::filesystem::path basePath = ".";
 
@@ -26,6 +30,8 @@ std::string vertexShaderFileName = "/home/henry/dev/ai-agent/assets/shader/demo.
 std::string fragmentShaderFileName = "/home/henry/dev/ai-agent/assets/shader/demo.frag";
 
 GLFWwindow *glfWindow = NULL;
+
+GLint timeLocation;
 
 unsigned int shaderProgram, VBO, VAO;
 
@@ -81,11 +87,6 @@ bool initializeGLFW()
     glfwWindowHint(GLFW_DEPTH_BITS, 24);
     glfwWindowHint(GLFW_STENCIL_BITS, 8);
 
-    // adjust these values depending on the OpenGL supported by your GPU driver
-    std::string glsl_version = "";
-
-    // GL 3.2 + GLSL 150
-    glsl_version = "#version 150";
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 
@@ -105,6 +106,8 @@ bool initializeGLFW()
         std::cerr << "[ERROR] Couldn't create a GLFW window" << std::endl;
         return false;
     }
+
+    glfwSetKeyCallback(glfWindow, key_callback);
 
     glfwSetWindowPos(glfWindow, 100, 100);
     glfwSetWindowSizeLimits(
@@ -181,7 +184,6 @@ bool initializeDearImGui()
     return true;
 }
 
-
 // build and compile our shader program
 void buildShaderProgram()
 {
@@ -190,9 +192,9 @@ void buildShaderProgram()
 
     std::string vertexShaderSource = readFile(vertexShaderFileName);
     // std::cout << "[DEBUG] vertexShaderSource: " << vertexShaderSource << std::endl;
-    
+
     const char *vertexShaderData = vertexShaderSource.c_str();
-    glShaderSource(vertexShader, 1, reinterpret_cast<GLchar const* const *>(&vertexShaderData), NULL);
+    glShaderSource(vertexShader, 1, &vertexShaderData, NULL);
     glCompileShader(vertexShader);
     // check for shader compile errors
     int success;
@@ -211,7 +213,7 @@ void buildShaderProgram()
     // std::cout << "[DEBUG] fragmentShaderSource: " << fragmentShaderSource << std::endl;
 
     const char *fragmentShaderData = fragmentShaderSource.c_str();
-    glShaderSource(fragmentShader, 1, reinterpret_cast<char const *const *>(&fragmentShaderData), NULL);
+    glShaderSource(fragmentShader, 1, &fragmentShaderData, NULL);
     glCompileShader(fragmentShader);
     // check for shader compile errors
     glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
@@ -237,12 +239,29 @@ void buildShaderProgram()
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
 
+    timeLocation = glGetUniformLocation(shaderProgram, "time");
+
     // set up vertex data (and buffer(s)) and configure vertex attributes
     float vertices[] =
         {
-            -0.5f, -0.5f, 0.0f, // left
-            0.5f, -0.5f, 0.0f,  // right
-            0.0f, 0.5f, 0.0f    // top
+            -1.0f,
+            -1.0f,
+            0.0f, // left
+            1.0f,
+            -1.0f,
+            0.0f, // right
+            1.0f,
+            1.0f,
+            0.0f, // top
+            -1.0f,
+            -1.0f,
+            0.0f,
+            1.0f,
+            1.0f,
+            0.0f,
+            -1.0f,
+            1.0f,
+            0.0f,
         };
 
     glGenVertexArrays(1, &VAO);
@@ -279,7 +298,32 @@ void composeDearImGuiFrame()
     ImGui::NewFrame();
 
     // standard demo window
-    ImGui::ShowDemoWindow();
+    // ImGui::ShowDemoWindow();
+
+    const float PAD = 10.0f;
+    const ImGuiViewport *viewport = ImGui::GetMainViewport();
+    ImVec2 work_pos = viewport->WorkPos; // Use work area to avoid menu-bar/task-bar, if any!
+    ImVec2 work_size = viewport->WorkSize;
+    ImVec2 window_pos, window_pos_pivot;
+    window_pos.x = work_pos.x + work_size.x - PAD;
+    window_pos.y = work_pos.y + PAD;
+    window_pos_pivot.x = 1.0f;
+    window_pos_pivot.y = 0.0f;
+    ImGui::SetNextWindowPos(window_pos, ImGuiCond_Once, window_pos_pivot);
+
+    ImGui::SetNextWindowBgAlpha(0.35f); // Transparent background
+    ImGuiIO &io = ImGui::GetIO();
+    ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
+    if (ImGui::Begin("Example: Simple overlay", NULL, window_flags))
+    {
+        ImGui::Text("Framerate: %.0fHz (%.2fms)", 1/frameTime, frameTime*1000.);
+        ImGui::Separator();
+        if (ImGui::IsMousePosValid())
+            ImGui::Text("Mouse Position: (%.0f,%.0f)", io.MousePos.x, io.MousePos.y);
+        else
+            ImGui::Text("Mouse Position: <invalid>");
+    }
+    ImGui::End();
 }
 
 int main(int argc, char *argv[])
@@ -328,16 +372,22 @@ int main(int argc, char *argv[])
     // rendering loop
     while (!glfwWindowShouldClose(glfWindow))
     {
+
+        float currTimestamp = glfwGetTime();
+        frameTime = currTimestamp - prevTimestamp;
+        prevTimestamp = currTimestamp;
+
         // the frame starts with a clean scene
         glClearColor(backgroundR, backgroundG, backgroundB, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
         // draw our triangle
         glUseProgram(shaderProgram);
+        glUniform1f(timeLocation, currTimestamp);
         // seeing as we only have a single VAO there's no need to bind it every time,
         // but we'll do so to keep things a bit more organized
         glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+        glDrawArrays(GL_TRIANGLES, 0, 2 * 3);
         // glBindVertexArray(0); // no need to unbind it every time
 
         // Dear ImGui frame
