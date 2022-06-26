@@ -10,6 +10,9 @@
 #include <imgui/imgui_impl_opengl3.h>
 
 #include "util/util.h"
+#include "util/shader.h"
+
+const float frameCounterInterval_s = 1.0;
 
 std::string programName = "AI-Agent Simulation";
 int windowWidth = 1200,
@@ -19,8 +22,9 @@ float backgroundR = 0.1f,
       backgroundG = 0.3f,
       backgroundB = 0.2f;
 
-float frameTime = 0.0f;
+float frameTime = .1f;
 float prevTimestamp = 0.0f;
+int frameCounter = 0;
 
 std::filesystem::path currentPath = ".";
 std::filesystem::path basePath = ".";
@@ -187,58 +191,9 @@ bool initializeDearImGui()
 // build and compile our shader program
 void buildShaderProgram()
 {
-    // vertex shader
-    unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
+    shader::loadShader(vertexShaderFileName.c_str(), fragmentShaderFileName.c_str(), nullptr /*geometryShader*/, &shaderProgram);
 
-    std::string vertexShaderSource = readFile(vertexShaderFileName);
-    // std::cout << "[DEBUG] vertexShaderSource: " << vertexShaderSource << std::endl;
-
-    const char *vertexShaderData = vertexShaderSource.c_str();
-    glShaderSource(vertexShader, 1, &vertexShaderData, NULL);
-    glCompileShader(vertexShader);
-    // check for shader compile errors
-    int success;
-    char infoLog[512];
-    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-    if (!success)
-    {
-        glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-        std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n"
-                  << infoLog << std::endl;
-    }
-    // fragment shader
-    unsigned int fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-
-    std::string fragmentShaderSource = readFile(fragmentShaderFileName);
-    // std::cout << "[DEBUG] fragmentShaderSource: " << fragmentShaderSource << std::endl;
-
-    const char *fragmentShaderData = fragmentShaderSource.c_str();
-    glShaderSource(fragmentShader, 1, &fragmentShaderData, NULL);
-    glCompileShader(fragmentShader);
-    // check for shader compile errors
-    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-    if (!success)
-    {
-        glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
-        std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n"
-                  << infoLog << std::endl;
-    }
-    // link shaders
-    shaderProgram = glCreateProgram();
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
-    glLinkProgram(shaderProgram);
-    // check for linking errors
-    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-    if (!success)
-    {
-        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
-        std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n"
-                  << infoLog << std::endl;
-    }
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
-
+    // attach variables
     timeLocation = glGetUniformLocation(shaderProgram, "time");
 
     // set up vertex data (and buffer(s)) and configure vertex attributes
@@ -316,7 +271,7 @@ void composeDearImGuiFrame()
     ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
     if (ImGui::Begin("Example: Simple overlay", NULL, window_flags))
     {
-        ImGui::Text("Framerate: %.0fHz (%.2fms)", 1/frameTime, frameTime*1000.);
+        ImGui::Text("Framerate: %.0fHz (%.2fms)", 1 / frameTime, frameTime * 1000.);
         ImGui::Separator();
         if (ImGui::IsMousePosValid())
             ImGui::Text("Mouse Position: (%.0f,%.0f)", io.MousePos.x, io.MousePos.y);
@@ -329,7 +284,7 @@ void composeDearImGuiFrame()
 int main(int argc, char *argv[])
 {
     std::cout << "["
-              << currentTime(std::chrono::system_clock::now())
+              << util::currentTime(std::chrono::system_clock::now())
               << "] "
               << "Start\n- - -\n\n";
 
@@ -372,10 +327,16 @@ int main(int argc, char *argv[])
     // rendering loop
     while (!glfwWindowShouldClose(glfWindow))
     {
-
         float currTimestamp = glfwGetTime();
-        frameTime = currTimestamp - prevTimestamp;
-        prevTimestamp = currTimestamp;
+        frameCounter++;
+
+        // update only every second (http://www.opengl-tutorial.org/miscellaneous/an-fps-counter/)
+        if ((currTimestamp - prevTimestamp) > frameCounterInterval_s)
+        {
+            frameTime = (currTimestamp - prevTimestamp) / float(frameCounter);
+            prevTimestamp = currTimestamp;
+            frameCounter = 0;
+        }
 
         // the frame starts with a clean scene
         glClearColor(backgroundR, backgroundG, backgroundB, 1.0f);
@@ -408,7 +369,7 @@ int main(int argc, char *argv[])
 
     std::cout << "\n- - -\n"
               << "["
-              << currentTime(std::chrono::system_clock::now())
+              << util::currentTime(std::chrono::system_clock::now())
               << "] "
               << "Quit\n";
 
