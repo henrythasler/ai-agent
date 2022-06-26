@@ -31,6 +31,7 @@ include_directories(
 set(sources 
     src/main.cpp
     src/util/util.cpp
+    src/util/shader.cpp
     )
 
 set(resource_files
