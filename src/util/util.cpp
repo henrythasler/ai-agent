@@ -24,7 +24,7 @@ namespace util
 
         if (!ifs.is_open())
         {
-            std::cerr << "Could not read file " << fileName << ". File does not exist." << std::endl;
+            std::cerr << "[ERROR] Could not read file " << fileName << ". File does not exist." << std::endl;
             return "";
         }
 

@@ -12,15 +12,14 @@
 #include "util/util.h"
 #include "util/shader.h"
 
+const std::string programName = "AI-Agent Simulation";
 const float frameCounterInterval_s = 1.0;
+const float highDPIscaleFactor = 1.0;
+const float backgroundR = 0.1f, backgroundG = 0.3f, backgroundB = 0.2f;
+const bool useFullscreen = false;
 
-std::string programName = "AI-Agent Simulation";
 int windowWidth = 1200,
     windowHeight = 800;
-float highDPIscaleFactor = 1.0;
-float backgroundR = 0.1f,
-      backgroundG = 0.3f,
-      backgroundB = 0.2f;
 
 float frameTime = .1f;
 float prevTimestamp = 0.0f;
@@ -33,11 +32,11 @@ std::string fontName = "JetBrainsMono-ExtraLight.ttf";
 std::string vertexShaderFileName = "/home/henry/dev/ai-agent/assets/shader/demo.vert";
 std::string fragmentShaderFileName = "/home/henry/dev/ai-agent/assets/shader/demo.frag";
 
-GLFWwindow *glfWindow = NULL;
+GLFWwindow *glfWindow = nullptr;
+GLFWmonitor *monitor = nullptr;
+const GLFWvidmode *mode = nullptr;
 
-GLint timeLocation;
-
-unsigned int shaderProgram, VBO, VAO;
+GLuint shaderProgram, VBO, VAO;
 
 static void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
@@ -66,7 +65,7 @@ void teardown()
     glDeleteBuffers(1, &VBO);
     glDeleteProgram(shaderProgram);
 
-    if (glfWindow != NULL)
+    if (glfWindow)
     {
         glfwDestroyWindow(glfWindow);
     }
@@ -96,14 +95,19 @@ bool initializeGLFW()
 
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    // const GLFWvidmode *mode = glfwGetVideoMode(monitor);
-    // glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
+    if (useFullscreen)
+    {
+        monitor = glfwGetPrimaryMonitor();
+        mode = glfwGetVideoMode(monitor);
+        glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
+    }
+
     glfWindow = glfwCreateWindow(
-        windowWidth,  // mode->width,
-        windowHeight, // mode->height,
+        mode ? mode->width : windowWidth,
+        mode ? mode->height : windowHeight,
         programName.c_str(),
-        NULL, // monitor
-        NULL);
+        monitor,
+        nullptr);
 
     if (!glfWindow)
     {
@@ -128,12 +132,6 @@ bool initializeGLFW()
     // VSync
     glfwSwapInterval(1);
 
-    std::cout << "[INFO] OpenGL from GLFW "
-              << glfwGetWindowAttrib(glfWindow, GLFW_CONTEXT_VERSION_MAJOR)
-              << "."
-              << glfwGetWindowAttrib(glfWindow, GLFW_CONTEXT_VERSION_MINOR)
-              << std::endl;
-
     return true;
 }
 
@@ -152,10 +150,9 @@ bool initializeGLAD()
         std::cout << "[INFO] GLAD initialized" << std::endl;
     }
 
-    std::cout << "[INFO] OpenGL renderer: " << glGetString(GL_RENDERER) << std::endl;
-    std::cout << "[INFO] OpenGL from glad "
-              << GLVersion.major << "." << GLVersion.minor
-              << std::endl;
+    std::cout << "[INFO] OpenGL Renderer: " << glGetString(GL_RENDERER) << " (" << glGetString(GL_VENDOR) << ")" << std::endl;
+    std::cout << "[INFO] OpenGL Version: " << GLVersion.major << "." << GLVersion.minor << std::endl;
+    std::cout << "[INFO] Shader Language Version: " << glGetString(GL_SHADING_LANGUAGE_VERSION) << std::endl;
 
     return true;
 }
@@ -171,8 +168,8 @@ bool initializeDearImGui()
     io.Fonts->AddFontFromFileTTF(
         fontName.c_str(),
         24.0f * highDPIscaleFactor,
-        NULL,
-        NULL);
+        nullptr,
+        nullptr);
     // setImGuiStyle(highDPIscaleFactor);
 
     // setup platform/renderer bindings
@@ -189,12 +186,12 @@ bool initializeDearImGui()
 }
 
 // build and compile our shader program
-void buildShaderProgram()
+bool buildShaderProgram()
 {
-    shader::loadShader(vertexShaderFileName.c_str(), fragmentShaderFileName.c_str(), nullptr /*geometryShader*/, &shaderProgram);
-
-    // attach variables
-    timeLocation = glGetUniformLocation(shaderProgram, "time");
+    if (!shader::loadShader(vertexShaderFileName.c_str(), fragmentShaderFileName.c_str(), nullptr /*geometryShader*/, &shaderProgram))
+    {
+        return false;
+    }
 
     // set up vertex data (and buffer(s)) and configure vertex attributes
     float vertices[] =
@@ -243,6 +240,7 @@ void buildShaderProgram()
 
     // uncomment this call to draw in wireframe polygons
     // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    return true;
 }
 
 void composeDearImGuiFrame()
@@ -269,7 +267,7 @@ void composeDearImGuiFrame()
     ImGui::SetNextWindowBgAlpha(0.35f); // Transparent background
     ImGuiIO &io = ImGui::GetIO();
     ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
-    if (ImGui::Begin("Example: Simple overlay", NULL, window_flags))
+    if (ImGui::Begin("Example: Simple overlay", nullptr, window_flags))
     {
         ImGui::Text("Framerate: %.0fHz (%.2fms)", 1 / frameTime, frameTime * 1000.);
         ImGui::Separator();
@@ -283,10 +281,8 @@ void composeDearImGuiFrame()
 
 int main(int argc, char *argv[])
 {
-    std::cout << "["
-              << util::currentTime(std::chrono::system_clock::now())
-              << "] "
-              << "Start\n- - -\n\n";
+    std::cout << std::endl
+              << "[INFO] Start " << util::currentTime(std::chrono::system_clock::now()) << std::endl;
 
     // setting paths to resources
     currentPath = std::filesystem::current_path();
@@ -296,9 +292,9 @@ int main(int argc, char *argv[])
     basePath = std::filesystem::path(argv[0]).remove_filename();
     basePath = currentPath / basePath;
 
-    std::cout << "[DEBUG] Executable name/path: " << argv[0] << std::endl
-              << "parent path: " << basePath << std::endl
-              << std::endl;
+    std::cout << "[DEBUG] Executable name/path: " << argv[0] << " "
+              << "parent path: " << basePath << std::endl;
+
     fontName = "/home/henry/dev/ai-agent/assets/fonts/JetBrainsMono/JetBrainsMono-ExtraLight.ttf"; //(basePath / "assets/fonts/JetBrainsMono" / fontName).string();
 
     std::cout << "[DEBUG] Font filename: " << fontName << std::endl;
@@ -322,7 +318,11 @@ int main(int argc, char *argv[])
     }
 
     // build and compile our shader program
-    buildShaderProgram();
+    if (!buildShaderProgram())
+    {
+        std::cerr << "[ERROR] Shader initialization failed" << std::endl;
+        return EXIT_FAILURE;
+    }
 
     // rendering loop
     while (!glfwWindowShouldClose(glfWindow))
@@ -344,7 +344,8 @@ int main(int argc, char *argv[])
 
         // draw our triangle
         glUseProgram(shaderProgram);
-        glUniform1f(timeLocation, currTimestamp);
+
+        shader::setFloat(shaderProgram, "time", currTimestamp);
         // seeing as we only have a single VAO there's no need to bind it every time,
         // but we'll do so to keep things a bit more organized
         glBindVertexArray(VAO);
@@ -367,11 +368,6 @@ int main(int argc, char *argv[])
 
     teardown();
 
-    std::cout << "\n- - -\n"
-              << "["
-              << util::currentTime(std::chrono::system_clock::now())
-              << "] "
-              << "Quit\n";
-
+    std::cout << "[INFO] Exit " << util::currentTime(std::chrono::system_clock::now()) << std::endl;
     return 0;
 }

@@ -7,7 +7,9 @@
 
 namespace shader
 {
-    void loadShader(const char *vertexShaderFile, const char *fragmentShaderFile, const char *geometryShaderFile, unsigned int *shaderProgram);
-    void compileShader(const char *vertexShaderData, const char *fragmentShaderData, const char *geometryShaderData, unsigned int *shaderProgram);
-    void checkCompileErrors(unsigned int shaderObject, std::string shaderType);
+    bool loadShader(const char *vertexShaderFile, const char *fragmentShaderFile, const char *geometryShaderFile, GLuint *shaderProgram);
+    bool compileShader(const char *vertexShaderData, const char *fragmentShaderData, const char *geometryShaderData, GLuint *shaderProgram);
+    bool checkCompileErrors(unsigned int shaderObject, std::string shaderType);
+
+    void setFloat(GLuint shaderProgram, const char *name, float value);
 }
