@@ -29,8 +29,8 @@ std::filesystem::path currentPath = ".";
 std::filesystem::path basePath = ".";
 
 std::string fontName = "JetBrainsMono-ExtraLight.ttf";
-std::string vertexShaderFileName = "/home/henry/dev/ai-agent/assets/shader/demo.vert";
-std::string fragmentShaderFileName = "/home/henry/dev/ai-agent/assets/shader/demo.frag";
+std::string vertexShaderFileName = "/home/henry/dev/ai-agent/assets/shader/circles.vert";
+std::string fragmentShaderFileName = "/home/henry/dev/ai-agent/assets/shader/circles.frag";
 
 GLFWwindow *glfWindow = nullptr;
 GLFWmonitor *monitor = nullptr;
@@ -346,6 +346,8 @@ int main(int argc, char *argv[])
         glUseProgram(shaderProgram);
 
         shader::setFloat(shaderProgram, "time", currTimestamp);
+        shader::setVec2(shaderProgram, "iResolution", glm::vec2(windowWidth, windowHeight));
+
         // seeing as we only have a single VAO there's no need to bind it every time,
         // but we'll do so to keep things a bit more organized
         glBindVertexArray(VAO);

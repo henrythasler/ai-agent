@@ -92,6 +92,9 @@ see [glad](https://github.com/Dav1dde/glad)
 
 ## Idea
 
+## OpenGL
+- [LearnOpenGL](https://learnopengl.com/)
+
 ## GLFW
 
 - [How to build & install GLFW 3 and use it in a Linux project](https://stackoverflow.com/questions/17768008/how-to-build-install-glfw-3-and-use-it-in-a-linux-project)

@@ -2,6 +2,7 @@
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <glm/glm/glm.hpp>
 
 #include "util.h"
 
@@ -12,4 +13,5 @@ namespace shader
     bool checkCompileErrors(unsigned int shaderObject, std::string shaderType);
 
     void setFloat(GLuint shaderProgram, const char *name, float value);
+    void setVec2(GLuint shaderProgram, const char *name, const glm::vec2 &val);
 }

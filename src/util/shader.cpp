@@ -119,8 +119,13 @@ namespace shader
         return true;
     }
 
-    void setFloat(GLuint shaderProgram, const char *name, float value)
+    void setFloat(GLuint shaderProgram, const char *name, float val)
     {
-        glUniform1f(glGetUniformLocation(shaderProgram, name), value);
+        glUniform1f(glGetUniformLocation(shaderProgram, name), val);
+    }
+
+    void setVec2(GLuint shaderProgram, const char *name, const glm::vec2 &val)
+    {
+        glUniform2f(glGetUniformLocation(shaderProgram, name), val.x, val.y);    
     }
 }
