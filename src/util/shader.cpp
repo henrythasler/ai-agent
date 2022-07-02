@@ -128,4 +128,9 @@ namespace shader
     {
         glUniform2f(glGetUniformLocation(shaderProgram, name), val.x, val.y);    
     }
+
+    void setInt(GLuint shaderProgram, const char *name, float val)
+    {
+        glUniform1i(glGetUniformLocation(shaderProgram, name), val);
+    }
 }

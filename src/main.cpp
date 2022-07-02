@@ -24,6 +24,7 @@ int windowWidth = 1200,
 float frameTime = .1f;
 float prevTimestamp = 0.0f;
 int frameCounter = 0;
+int iFrame = 0;
 
 std::filesystem::path currentPath = ".";
 std::filesystem::path basePath = ".";
@@ -36,7 +37,10 @@ GLFWwindow *glfWindow = nullptr;
 GLFWmonitor *monitor = nullptr;
 const GLFWvidmode *mode = nullptr;
 
-GLuint shaderProgram, VBO, VAO;
+GLuint shaderProgram, VBO, VAO, texture;
+float pixels[] = {
+    0.9f, 0.9f, 0.9f,   1.0f, 1.0f, 1.0f,
+    1.0f, 1.0f, 1.0f,   0.9f, 0.9f, 0.9f};
 
 static void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
@@ -51,6 +55,8 @@ static void glfw_error_callback(int error, const char *description)
 
 static void framebuffer_size_callback(GLFWwindow *window, int width, int height)
 {
+    windowWidth = width;
+    windowHeight = height;
     glViewport(0, 0, width, height);
 }
 
@@ -238,6 +244,15 @@ bool buildShaderProgram()
     // when it's not directly necessary
     glBindVertexArray(0);
 
+    // add texture
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 2, 2, 0, GL_RGB, GL_FLOAT, pixels);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    // unbind for now
+    glBindTexture(GL_TEXTURE_2D, 0);
+
     // uncomment this call to draw in wireframe polygons
     // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     return true;
@@ -249,9 +264,6 @@ void composeDearImGuiFrame()
     ImGui_ImplGlfw_NewFrame();
 
     ImGui::NewFrame();
-
-    // standard demo window
-    // ImGui::ShowDemoWindow();
 
     const float PAD = 10.0f;
     const ImGuiViewport *viewport = ImGui::GetMainViewport();
@@ -329,6 +341,7 @@ int main(int argc, char *argv[])
     {
         float currTimestamp = glfwGetTime();
         frameCounter++;
+        iFrame++;
 
         // update only every second (http://www.opengl-tutorial.org/miscellaneous/an-fps-counter/)
         if ((currTimestamp - prevTimestamp) > frameCounterInterval_s)
@@ -345,8 +358,12 @@ int main(int argc, char *argv[])
         // draw our triangle
         glUseProgram(shaderProgram);
 
-        shader::setFloat(shaderProgram, "time", currTimestamp);
+        shader::setFloat(shaderProgram, "iFrame", iFrame);
+        shader::setFloat(shaderProgram, "iTime", currTimestamp);
         shader::setVec2(shaderProgram, "iResolution", glm::vec2(windowWidth, windowHeight));
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, texture);
 
         // seeing as we only have a single VAO there's no need to bind it every time,
         // but we'll do so to keep things a bit more organized

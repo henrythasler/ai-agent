@@ -90,10 +90,14 @@ see [glad](https://github.com/Dav1dde/glad)
 
 # References
 
-## Idea
+## AI-Agents and Simulations
+
+- [Pezzza's Work: Evolving AIs - Predator vs Prey, who will win?](https://www.youtube.com/watch?v=qwrp3lB-jkQ)
+- [davidrandallmiller: I programmed some creatures. They Evolved.](https://www.youtube.com/watch?v=N3tRFayqVtk)
 
 ## OpenGL
 - [LearnOpenGL](https://learnopengl.com/)
+- [Inigo Quilez::articles](https://iquilezles.org/articles/)
 
 ## GLFW
 
@@ -104,14 +108,10 @@ see [glad](https://github.com/Dav1dde/glad)
 - [GLFW and Dear ImGui](https://decovar.dev/blog/2019/08/04/glfw-dear-imgui/)
 - [An introduction to the Dear ImGui library](https://blog.conan.io/2019/06/26/An-introduction-to-the-Dear-ImGui-library.html)
 
-## AI-Agents and Simulations
-
-- [Pezzza's Work: Evolving AIs - Predator vs Prey, who will win?](https://www.youtube.com/watch?v=qwrp3lB-jkQ)
-- [davidrandallmiller: I programmed some creatures. They Evolved.](https://www.youtube.com/watch?v=N3tRFayqVtk)
-
 ## Machine Learning and Math
 
 - [Wikipedia: Activation function](https://en.wikipedia.org/wiki/Activation_function)
+- []()
 
 ## Graphics Resources 
 

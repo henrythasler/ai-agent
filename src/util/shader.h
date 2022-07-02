@@ -14,4 +14,5 @@ namespace shader
 
     void setFloat(GLuint shaderProgram, const char *name, float value);
     void setVec2(GLuint shaderProgram, const char *name, const glm::vec2 &val);
+    void setInt(GLuint shaderProgram, const char *name, float val);
 }
