@@ -1,6 +1,8 @@
 # ai-agent
 Simulating AI-based agents
 
+![latest](docs/latest.png)
+
 ## Goals
 
 1. The neural network (brain) has one input layer, 3 hidden layers and one output layer. 
@@ -97,7 +99,8 @@ see [glad](https://github.com/Dav1dde/glad)
 
 ## OpenGL
 - [LearnOpenGL](https://learnopengl.com/)
-- [Inigo Quilez::articles](https://iquilezles.org/articles/)
+- [Inigo Quilez: Articles](https://iquilezles.org/articles/)
+- [stackoverflow: Passing a list of values to fragment shader](https://stackoverflow.com/questions/7954927/passing-a-list-of-values-to-fragment-shader)
 
 ## GLFW
 

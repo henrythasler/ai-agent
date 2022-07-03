@@ -26,21 +26,26 @@ float prevTimestamp = 0.0f;
 int frameCounter = 0;
 int iFrame = 0;
 
+glm::vec2 viewportCenter = {0,0};
+float viewportZoom = 1.0;
+
 std::filesystem::path currentPath = ".";
 std::filesystem::path basePath = ".";
 
 std::string fontName = "JetBrainsMono-ExtraLight.ttf";
-std::string vertexShaderFileName = "/home/henry/dev/ai-agent/assets/shader/circles.vert";
-std::string fragmentShaderFileName = "/home/henry/dev/ai-agent/assets/shader/circles.frag";
+std::string vertexShaderFileName = "/home/henry/dev/ai-agent/assets/shader/world.vert";
+std::string fragmentShaderFileName = "/home/henry/dev/ai-agent/assets/shader/world.frag";
 
 GLFWwindow *glfWindow = nullptr;
 GLFWmonitor *monitor = nullptr;
 const GLFWvidmode *mode = nullptr;
 
-GLuint shaderProgram, VBO, VAO, texture;
+GLuint shaderProgram, VBO, VAO, texture, population;
 float pixels[] = {
     0.9f, 0.9f, 0.9f,   1.0f, 1.0f, 1.0f,
     1.0f, 1.0f, 1.0f,   0.9f, 0.9f, 0.9f};
+
+float populationData[256 * 4];
 
 static void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
@@ -160,6 +165,16 @@ bool initializeGLAD()
     std::cout << "[INFO] OpenGL Version: " << GLVersion.major << "." << GLVersion.minor << std::endl;
     std::cout << "[INFO] Shader Language Version: " << glGetString(GL_SHADING_LANGUAGE_VERSION) << std::endl;
 
+    // Check GL_MAX_UNIFORM_BLOCK_SIZE to make sure we can allocate enough UBO memory
+    int32_t maxUniformBlockSize;
+    glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &maxUniformBlockSize);
+    std::cout << "[INFO] GL_MAX_UNIFORM_BLOCK_SIZE: " << maxUniformBlockSize << std::endl;
+    if(maxUniformBlockSize < 65536) 
+    {
+        std::cerr << "[ERROR] GL_MAX_UNIFORM_BLOCK_SIZE must be >=65536" << std::endl;
+        return false;
+    }
+
     return true;
 }
 
@@ -253,6 +268,16 @@ bool buildShaderProgram()
     // unbind for now
     glBindTexture(GL_TEXTURE_2D, 0);
 
+    // add uniform buffer object for population
+    unsigned int uniformBlockIndex = glGetUniformBlockIndex(shaderProgram, "Population");
+    glUniformBlockBinding(shaderProgram, uniformBlockIndex, 0);
+
+    glGenBuffers(1, &population);
+    glBindBuffer(GL_UNIFORM_BUFFER, population);
+    glBufferData(GL_UNIFORM_BUFFER, 32772, nullptr, GL_STATIC_DRAW); // allocate 12 KiB of memory
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);    
+    glBindBufferRange(GL_UNIFORM_BUFFER, 0, population, 0, 32772);
+
     // uncomment this call to draw in wireframe polygons
     // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     return true;
@@ -282,13 +307,27 @@ void composeDearImGuiFrame()
     if (ImGui::Begin("Example: Simple overlay", nullptr, window_flags))
     {
         ImGui::Text("Framerate: %.0fHz (%.2fms)", 1 / frameTime, frameTime * 1000.);
+        ImGui::Text("Frame: %i", iFrame);
         ImGui::Separator();
         if (ImGui::IsMousePosValid())
-            ImGui::Text("Mouse Position: (%.0f,%.0f)", io.MousePos.x, io.MousePos.y);
+            ImGui::Text("Mouse: (%.0f,%.0f)", io.MousePos.x, io.MousePos.y);
         else
-            ImGui::Text("Mouse Position: <invalid>");
+            ImGui::Text("Mouse: <invalid>");
+        ImGui::Text("Center: (%.0f,%.0f)", viewportCenter.x, viewportCenter.y);
+        ImGui::Text("Zoom: %.0f", viewportZoom);
     }
     ImGui::End();
+}
+
+void processUserInteraction()
+{
+    ImGuiIO &io = ImGui::GetIO();
+    ImVec2 dragdelta = ImGui::GetMouseDragDelta(ImGuiMouseButton_Left);
+    if(ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+    {
+        viewportCenter = glm::vec2(-dragdelta.x, dragdelta.y);
+    }
+    viewportZoom += io.MouseWheel;
 }
 
 int main(int argc, char *argv[])
@@ -361,9 +400,16 @@ int main(int argc, char *argv[])
         shader::setFloat(shaderProgram, "iFrame", iFrame);
         shader::setFloat(shaderProgram, "iTime", currTimestamp);
         shader::setVec2(shaderProgram, "iResolution", glm::vec2(windowWidth, windowHeight));
+        shader::setVec2(shaderProgram, "iViewportCenter", viewportCenter);
+        shader::setFloat(shaderProgram, "iZoom", exp(-viewportZoom/10.));
 
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture);
+
+        glBindBuffer(GL_UNIFORM_BUFFER, population);
+        int popCount = (iFrame) % 1000;
+        glBufferSubData(GL_UNIFORM_BUFFER, 0, 4, &popCount); 
+        // glBindBuffer(GL_UNIFORM_BUFFER, 0);        
 
         // seeing as we only have a single VAO there's no need to bind it every time,
         // but we'll do so to keep things a bit more organized
@@ -373,6 +419,10 @@ int main(int argc, char *argv[])
 
         // Dear ImGui frame
         composeDearImGuiFrame();
+
+        // User Interaction
+        processUserInteraction();
+
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
